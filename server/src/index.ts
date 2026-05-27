@@ -1,6 +1,8 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { getDb } from './db/database.js';
 import pinsRouter from './routes/pins.js';
 import peopleRouter from './routes/people.js';
@@ -8,6 +10,7 @@ import searchRouter from './routes/search.js';
 import directionsRouter from './routes/directions.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = Number(process.env.PORT ?? 3000);
 const CLIENT_URL = process.env.CLIENT_URL ?? 'http://localhost:5173';
@@ -27,6 +30,15 @@ app.use('/api/directions', directionsRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
+
+// ── Serve built client in production ────────────────────────────────────────
+if (process.env.NODE_ENV === 'production') {
+  const clientDist = join(__dirname, '..', '..', 'client', 'dist');
+  app.use(express.static(clientDist));
+  app.get('*', (_req, res) => {
+    res.sendFile(join(clientDist, 'index.html'));
+  });
+}
 
 // ── Error Handler ────────────────────────────────────────────────────────────
 app.use(errorHandler);
