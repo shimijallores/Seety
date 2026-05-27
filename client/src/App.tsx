@@ -293,25 +293,19 @@ export default function App() {
 
   const [showLocationsModal, setShowLocationsModal] = useState(false);
 
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    const onboarded = localStorage.getItem('seety_onboarded');
-    if (!onboarded) {
-      sessionStorage.removeItem('seety_session_tour_completed');
-    }
-    return !onboarded;
-  });
+  const [showOnboarding, setShowOnboarding] = useState(true);
   const [onboardingStep, setOnboardingStep] = useState(1);
   const [tourStepIndex, setTourStepIndex] = useState<number | null>(null);
 
-  // Start session tour if onboarding is done but session tour is not
+  // Start tour 1s after onboarding closes
   useEffect(() => {
-    if (localStorage.getItem('seety_onboarded') === 'true' && !sessionStorage.getItem('seety_session_tour_completed')) {
+    if (!showOnboarding) {
       const timer = setTimeout(() => {
         setTourStepIndex(0);
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [showOnboarding]);
 
   const handleNextTourStep = useCallback(() => {
     if (tourStepIndex === null) return;
@@ -319,7 +313,6 @@ export default function App() {
       setTourStepIndex(tourStepIndex + 1);
     } else {
       setTourStepIndex(null);
-      sessionStorage.setItem('seety_session_tour_completed', 'true');
       addToast('Tour completed! Enjoy exploring Seety.', 'success');
     }
   }, [tourStepIndex]);
@@ -333,7 +326,6 @@ export default function App() {
 
   const handleSkipTour = useCallback(() => {
     setTourStepIndex(null);
-    sessionStorage.setItem('seety_session_tour_completed', 'true');
     addToast('Tour skipped.', 'info');
   }, []);
 
@@ -867,11 +859,7 @@ export default function App() {
                     style={{ width: '100%', justifyContent: 'center', padding: '0.75rem' }}
                     onClick={() => {
                       handleOnboardingLocation();
-                      localStorage.setItem('seety_onboarded', 'true');
                       setShowOnboarding(false);
-                      if (!sessionStorage.getItem('seety_session_tour_completed')) {
-                        setTimeout(() => setTourStepIndex(0), 1000);
-                      }
                     }}
                   >
                     Share My Location
@@ -880,12 +868,8 @@ export default function App() {
                     className="btn btn-ghost"
                     style={{ width: '100%', justifyContent: 'center', padding: '0.75rem' }}
                     onClick={() => {
-                      localStorage.setItem('seety_onboarded', 'true');
                       setShowOnboarding(false);
                       addToast('Using default CALABARZON center.', 'info');
-                      if (!sessionStorage.getItem('seety_session_tour_completed')) {
-                        setTimeout(() => setTourStepIndex(0), 1000);
-                      }
                     }}
                   >
                     Skip for Now
