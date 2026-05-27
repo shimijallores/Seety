@@ -170,6 +170,16 @@ body {
 .animate-slide-in-up    { animation: slide-in-up    0.3s cubic-bezier(0.4,0,0.2,1); }
 .animate-fade-in        { animation: fade-in        0.2s ease-out; }
 
+/* ── Fade stagger for list items ────────────────────────────────────────── */
+@keyframes fade-stagger-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-stagger {
+  animation: fade-stagger-in 0.25s ease-out forwards;
+  opacity: 0;
+}
+
 /* ── Buttons ────────────────────────────────────────────────────────────── */
 .btn {
   display: inline-flex;
@@ -246,6 +256,7 @@ textarea.input { resize: vertical; min-height: 80px; }
 }
 .card:hover { border-color: var(--color-primary-light); box-shadow: 0 2px 12px rgba(65,23,107,0.08); }
 .card.active { border-color: var(--color-primary); background: var(--color-primary-muted); }
+.card-hover:hover { background: var(--color-primary-muted); border-color: var(--color-primary-light); }
 
 /* ── Badge ──────────────────────────────────────────────────────────────── */
 .badge {
@@ -895,7 +906,8 @@ textarea.input { resize: vertical; min-height: 80px; }
 }
 
 @media (max-width: 767px) {
-  .floating-logo-badge {
+  .floating-logo-badge,
+  #floating-locations-btn {
     display: none !important;
   }
 }

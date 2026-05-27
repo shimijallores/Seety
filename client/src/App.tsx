@@ -4,6 +4,7 @@ import { MapView } from './components/map/MapView';
 import { Sidebar } from './components/sidebar/Sidebar';
 import { LocationPanel } from './components/location/LocationPanel';
 import { LocationForm } from './components/location/LocationForm';
+import { LocationsModal } from './components/location/LocationsModal';
 import { PersonForm } from './components/people/PersonForm';
 import { NavigationOverlay } from './components/navigation/NavigationOverlay';
 import { usePins } from './hooks/usePins';
@@ -290,6 +291,8 @@ export default function App() {
     addToast('Cleared all saved locations.', 'success');
   }, []);
 
+  const [showLocationsModal, setShowLocationsModal] = useState(false);
+
   const [showOnboarding, setShowOnboarding] = useState(() => {
     const onboarded = localStorage.getItem('seety_onboarded');
     if (!onboarded) {
@@ -543,6 +546,31 @@ export default function App() {
           />
         </div>
 
+        {/* Floating Locations Button (sm +) */}
+        <button
+          id="floating-locations-btn"
+          style={{
+            position: 'absolute', top: 16, right: 130, zIndex: 500,
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            fontSize: '0.9375rem', fontWeight: 600,
+            height: 50, boxSizing: 'border-box',
+            padding: '0 20px', borderRadius: '9999px',
+            background: '#fff', color: 'var(--color-text)',
+            border: '1px solid var(--color-border)',
+            boxShadow: '0 4px 12px rgba(78, 54, 41, 0.12)',
+            cursor: 'pointer',
+            pointerEvents: 'auto',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+            lineHeight: 1,
+          }}
+          onClick={() => setShowLocationsModal(true)}
+          onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 24px rgba(78, 54, 41, 0.16)'; }}
+          onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
+        >
+          <MapPin size={16} />
+          Locations
+        </button>
+
         {/* Floating Logo Badge (sm +) */}
         <div className="floating-logo-badge">
           <img
@@ -707,6 +735,18 @@ export default function App() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* ── Locations Modal ── */}
+        {showLocationsModal && (
+          <LocationsModal
+            onClose={() => setShowLocationsModal(false)}
+            addToast={addToast}
+            pins={pins}
+            createPin={createPin}
+            updatePin={updatePin}
+            deletePin={deletePin}
+          />
         )}
 
         {/* ── Navigation overlay (Waze-style) ── */}
