@@ -43,7 +43,21 @@ cd /opt/seety
 # Clone (use a GitHub personal access token since it's private)
 # Generate a token at: Settings > Developer settings > Personal access tokens > Fine-grained tokens
 # Give it "Contents: read" access to the repo
+
+# IMPORTANT: the trailing dot "." clones directly into /opt/seety, NOT a subfolder
 git clone https://<YOUR_GITHUB_USERNAME>:<YOUR_GITHUB_TOKEN>@github.com/<YOUR_GITHUB_USERNAME>/seety.git .
+
+# Verify the structure — you should see client/ and server/ directories directly:
+ls
+# Expected output:  client  DEPLOY.md  package.json  README.md  server
+```
+
+If you already cloned without the `.` and have a nested `Seety/Seety/` structure, fix it:
+
+```bash
+# If /opt/seety/Seety exists, move everything up one level
+cd /opt/seety
+mv Seety/* Seety/.* . 2>/dev/null; rmdir Seety
 ```
 
 ## 4. Create Production Environment File
@@ -76,6 +90,8 @@ npm run build --prefix client
 npm run build --prefix server
 ```
 
+Expected output from server build: compiled `.js` files appear in `server/dist/`.
+
 ## 6. Test the Server (Manual)
 
 ```bash
@@ -83,21 +99,20 @@ cd /opt/seety/server
 node dist/index.js
 ```
 
-Open a second terminal SSH session and test:
+Open a **second** terminal SSH session and test:
 
 ```bash
+# Health check
 curl http://localhost:3000/api/health
-```
 
-Expected response: `{"status":"ok"}`
-
-Also test that it serves the client:
-
-```bash
+# Client HTML
 curl http://localhost:3000/ | head -5
 ```
 
-Should return HTML (the built React app). Press `Ctrl+C` to stop the server.
+- Health check should return: `{"status":"ok"}`
+- Client should return HTML (the built React app, `<div id="root">` etc.)
+
+Press `Ctrl+C` to stop the manual test.
 
 ## 7. Install & Configure PM2
 
@@ -106,13 +121,21 @@ Should return HTML (the built React app). Press `Ctrl+C` to stop the server.
 sudo npm install -g pm2
 
 # Start the server with PM2
-pm2 start /opt/seety/server/dist/index.js --name seety
+cd /opt/seety/server
+pm2 start dist/index.js --name seety
 
 # Save the process list (so it restarts on reboot)
 pm2 save
 
 # Generate startup script (follow the instructions it prints)
 sudo pm2 startup systemd
+```
+
+Verify PM2 is running:
+
+```bash
+pm2 status
+# Should show "seety" as online
 ```
 
 ## 8. Configure Nginx
@@ -129,7 +152,6 @@ server {
     listen 80;
     server_name procurex.site www.procurex.site;
 
-    # Increase max body size for any future uploads
     client_max_body_size 10M;
 
     location /api/ {
@@ -170,12 +192,12 @@ In your **Namecheap** dashboard:
 1. Go to **Domain List** → `procurex.site` → **Advanced DNS**
 2. Delete any existing `A` records for `@`
 3. Add a new **A Record**:
-   - Type: `A`
+   - Type: `A Record`
    - Host: `@`
    - Value: `<YOUR_DROPLET_IP>`
    - TTL: `Automatic` (or `300`)
 4. Add a **CNAME Record** for www:
-   - Type: `CNAME`
+   - Type: `CNAME Record`
    - Host: `www`
    - Value: `procurex.site`
    - TTL: `Automatic`
@@ -193,9 +215,15 @@ sudo certbot --nginx -d procurex.site -d www.procurex.site
 Follow the prompts:
 - Enter your email (for renewal notices)
 - Agree to the terms
-- Choose whether to redirect HTTP to HTTPS (recommended: Yes)
+- Choose whether to redirect HTTP to HTTPS → **2** (Yes, redirect)
 
-Certbot will automatically modify the nginx config and set up auto-renewal.
+Certbot automatically modifies the nginx config and sets up auto-renewal.
+
+Verify auto-renewal works:
+
+```bash
+sudo certbot renew --dry-run
+```
 
 ## 11. Verify Everything
 
@@ -206,11 +234,12 @@ pm2 status
 # Check nginx
 sudo systemctl status nginx
 
-# Check certbot auto-renewal
-sudo certbot renew --dry-run
+# Check the app responds through nginx
+curl -s -o /dev/null -w "%{http_code}" http://localhost
+# Should return 200 (or 301/302 if redirected to HTTPS)
 ```
 
-Open `https://procurex.site` in your browser. The app should load with full API functionality.
+Open `https://procurex.site` in your browser. The app should load with the map, all pins, and working API.
 
 ## 12. Subsequent Deploys (After Pushing Changes)
 
@@ -228,13 +257,15 @@ pm2 restart seety
 
 ## Troubleshooting
 
-| Symptom | Check |
-|---|---|
-| `502 Bad Gateway` | PM2 not running → `pm2 restart seety` |
-| `Cannot GET /` | Nginx proxy_pass wrong → verify nginx config |
-| API returns HTML | Server not serving /api routes → check Nginx location order |
-| `ECONNREFUSED` on DB | Ensure `/opt/seety/server/` is writable (SQLite creates .db file there) |
-| Blank page in browser | Open DevTools → check if JS/CSS files 404 → rebuild client |
+| Symptom | Cause | Fix |
+|---|---|---|
+| `ENOENT: schema.sql` | Build missing or path wrong | Run `npm run build --prefix server`, verify `server/dist/` exists |
+| `502 Bad Gateway` | PM2 not running | `pm2 restart seety` |
+| `Cannot GET /` | Nginx proxy_pass wrong | Verify `proxy_pass http://127.0.0.1:3000;` in nginx config |
+| API returns HTML instead of JSON | Nginx not routing `/api/` correctly | Ensure `location /api/` block comes **before** `location /` |
+| Blank page, JS/CSS 404 | Client not built or path wrong | Rebuild: `npm run build --prefix client` |
+| `ECONNREFUSED` on DB | Server can't write `.db` file | Ensure `/opt/seety/server/` directory is writable |
+| Port already in use | Another process on 3000 | `kill $(lsof -t -i:3000)` then `pm2 restart seety` |
 
 ## File Ownership (if you used a non-root user)
 
@@ -244,4 +275,8 @@ If you created a user like `deploy` instead of running as root:
 sudo chown -R deploy:deploy /opt/seety
 ```
 
-And in PM2 startup, run commands as that user.
+And in PM2 startup, run commands as that user:
+
+```bash
+pm2 startup systemd -u deploy --hp /home/deploy
+```

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DB_PATH = join(__dirname, '..', '..', 'seety.db');
-const SCHEMA_PATH = join(__dirname, 'schema.sql');
+const SCHEMA_PATH = join(__dirname, '..', '..', 'src', 'db', 'schema.sql');
 
 let db: DatabaseSync | null = null;
 
